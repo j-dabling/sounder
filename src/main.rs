@@ -35,9 +35,9 @@ fn main() {
     let config_path = ".config";
     if Path::new(config_path).exists() {
         println!("Config file found!\nParsing for options...");
-        //parse_config(".config")
+        parse_config(".config");
         let test_player = Player{media_source: String::from("media")};
-        test_player.testeroonie("media/test.mp3");
+        //test_player.testeroonie("media/test.mp3");
     }
     else {
         println!("Config file not found. Creating it now.");
@@ -62,12 +62,13 @@ fn read_poem() {
 fn create_default_config() {
     let mut file = fs::File::create(".config")
         .expect("Should have been able to create file.");
+
+    file.write(b"");
+    // file.write(b"CONFIG_PATH: .config\n")
+    //     .expect("Should have been able to write to file.");
     
-    file.write(b"CONFIG_PATH: .config\n")
-        .expect("Should have been able to write to file.");
-    
-    file.write(b"MEDIA_PATH: media/\n")
-        .expect("Should have been able to write to file.");
+    // file.write(b"MEDIA_PATH: media/\n")
+    //     .expect("Should have been able to write to file.");
 }
 
 // Sets environment variables according to the options found in config file.
@@ -75,8 +76,26 @@ fn parse_config(file_path:&str) {
     let file = fs::File::open(file_path).expect("file not found!");
     let reader = BufReader::new(file);
 
-    for line in reader.lines() {
-        println!("{:?}", line);
+    let mut source_list: Vec<Vec<String>> = Vec::new();
+    for line_result in reader.lines() {
+        let line = line_result.unwrap();
+        println!("{:?}", line.split(':')).collect();
+        // let source_couple: Vec<String> = line.split(':');
+        // println!("{:?}", source_couple);
+        // source_list.push(source_couple);
+
+
+
+        // println!("{:?}", source_list);
+        // //println!("{:?}", line.rfind(':'));
+        // let seperator = line.rfind(':');
+        // // println!("{}", seperator)
+        // if (seperator > Some(0)) {
+        //     println!("HELLO HELLO HELLO HELLO{:?}", seperator);
+        // }
+        // else {
+        //     println!("There is no config option to specify.")
+        // }
     }
 }
 
