@@ -76,13 +76,21 @@ fn parse_config(file_path:&str) {
     let file = fs::File::open(file_path).expect("file not found!");
     let reader = BufReader::new(file);
 
-    let mut source_list: Vec<Vec<String>> = Vec::new();
+    // let mut source_list: Vec<String> = Vec::new();
+    let mut source_list = Vec::new();
+    // let mut source_couple: &'a Vec<&str> = &Vec::new();
     for line_result in reader.lines() {
         let line = line_result.unwrap();
-        println!("{:?}", line.split(':')).collect();
-        // let source_couple: Vec<String> = line.split(':');
-        // println!("{:?}", source_couple);
-        // source_list.push(source_couple);
+        // println!("{:?}", line.split(':').collect::<Vec<&str>>());
+        // let source_couple = line.split(':').collect::<Vec<&str>>();
+        //let source_couple: Vec<String> = line.split(':');
+        // let source_couple: !Vec<&str> = line.split(':').collect();
+        let source_couple: Vec<String> = line.split(":").map(|s| s.to_owned()).collect();
+        // let source_couple: Vec<String> = [source_couple_original[0].to_string(), source_couple_original[1].to_string()]
+        // let source_couple: Vec<String> = source_couple_original.iter().map(String::from).to_vec();
+        // println!("This is the source couple: {:?}", source_couple);
+        source_list.push(source_couple);
+
 
 
 
@@ -96,6 +104,10 @@ fn parse_config(file_path:&str) {
         // else {
         //     println!("There is no config option to specify.")
         // }
+    }
+
+    for i in source_list {
+        println!("I'm printing this from the source_list {:?}", i);
     }
 }
 
