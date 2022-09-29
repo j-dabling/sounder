@@ -76,38 +76,22 @@ fn parse_config(file_path:&str) {
     let file = fs::File::open(file_path).expect("file not found!");
     let reader = BufReader::new(file);
 
-    // let mut source_list: Vec<String> = Vec::new();
+    // Creates a list to keep track of all media files and their hot-keys.
     let mut source_list = Vec::new();
-    // let mut source_couple: &'a Vec<&str> = &Vec::new();
     for line_result in reader.lines() {
+        // Unwraps the lines() result into an str.
         let line = line_result.unwrap();
-        // println!("{:?}", line.split(':').collect::<Vec<&str>>());
-        // let source_couple = line.split(':').collect::<Vec<&str>>();
-        //let source_couple: Vec<String> = line.split(':');
-        // let source_couple: !Vec<&str> = line.split(':').collect();
+        // Splits the str into the file and the key strings,
+        // then maps each str into a completely new String vector to avoid complications
+        // with the lifetime of 'line'.
         let source_couple: Vec<String> = line.split(":").map(|s| s.to_owned()).collect();
-        // let source_couple: Vec<String> = [source_couple_original[0].to_string(), source_couple_original[1].to_string()]
-        // let source_couple: Vec<String> = source_couple_original.iter().map(String::from).to_vec();
-        // println!("This is the source couple: {:?}", source_couple);
+        // Pushes the new vector out into 'source_list'.
         source_list.push(source_couple);
-
-
-
-
-        // println!("{:?}", source_list);
-        // //println!("{:?}", line.rfind(':'));
-        // let seperator = line.rfind(':');
-        // // println!("{}", seperator)
-        // if (seperator > Some(0)) {
-        //     println!("HELLO HELLO HELLO HELLO{:?}", seperator);
-        // }
-        // else {
-        //     println!("There is no config option to specify.")
-        // }
     }
 
+    // Simple test case for now to prove that 'source_list' works as intended.
     for i in source_list {
-        println!("I'm printing this from the source_list {:?}", i);
+        println!("I'm printing this from the source_list: {:?}", i);
     }
 }
 
