@@ -1,99 +1,114 @@
-//use std::env;
 use std::fs;
 use std::path::Path;
-use std::io::{Read, Write, Cursor};
-use std::io::{self, prelude::*, BufReader};
+use std::io::{Write, stdout, stdin};
+use std::io::{prelude::*, BufReader};
 use rodio::{Decoder, OutputStream, source::Source};
 
-//===========================================================================//
+use termion::event::Key;
+use termion::input::TermRead;
+use termion::raw::IntoRawMode;
 
-struct Player {
-    media_source: String
-}
-
-impl Player {
-    fn testeroonie(&self, audio:&str) {
-        println!("Sourcing audio files from folder: {}", self.media_source);
-        // Get a output stream handle to the default physical sound device
-        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-        // Load a sound from a file, using a path relative to Cargo.toml
-        let file = BufReader::new(fs::File::open(audio).unwrap());
-        // Decode that sound file into a source
-        let source = Decoder::new(file).unwrap();
-        // Play the sound directly on the device
-        stream_handle.play_raw(source.convert_samples());
-
-        // The sound plays in a separate audio thread,
-        // so we need to keep the main thread alive while it's playing.
-        std::thread::sleep(std::time::Duration::from_secs(3));
-    }
-}
-
-//===========================================================================//
 
 fn main() {
     let config_path = ".config";
+    let mut audio_sources = Vec::new();
     if Path::new(config_path).exists() {
         println!("Config file found!\nParsing for options...");
-        parse_config(".config");
-        let test_player = Player{media_source: String::from("media")};
-        //test_player.testeroonie("media/test.mp3");
+        audio_sources = parse_config(config_path);
     }
     else {
-        println!("Config file not found. Creating it now.");
+        println!("Config file not found. A new one has been created. Please populate it.");
         create_default_config();
     }
-    //read_poem()
-}
-
-// Reads a demo text file, based off of the Rust Doc tutorial.
-fn read_poem() {
-    let file_path = "../poem.txt";
-    println!("From the file: {}", file_path);
-
-    let contents = fs::read_to_string(file_path)
-        .expect("Cannot read file at given path.");
-
-    println!("{contents}");
+    process_input(&audio_sources);
 }
 
 // Checks to see if the default config file exists.
 // If no file is found, one will be created and populated by default.
 fn create_default_config() {
     let mut file = fs::File::create(".config")
-        .expect("Should have been able to create file.");
-
-    file.write(b"");
-    // file.write(b"CONFIG_PATH: .config\n")
-    //     .expect("Should have been able to write to file.");
-    
-    // file.write(b"MEDIA_PATH: media/\n")
-    //     .expect("Should have been able to write to file.");
+        .expect("Should have been able to create file, but could not.");
+    file.write(b"").expect("Should have been able to write file, but could not.");
 }
 
 // Sets environment variables according to the options found in config file.
-fn parse_config(file_path:&str) {
+fn parse_config(file_path:&str) -> Vec<Vec<String>>{
     let file = fs::File::open(file_path).expect("file not found!");
     let reader = BufReader::new(file);
 
     // Creates a list to keep track of all media files and their hot-keys.
     let mut source_list = Vec::new();
-    for line_result in reader.lines() {
-        // Unwraps the lines() result into an str.
-        let line = line_result.unwrap();
-        // Splits the str into the file and the key strings,
+    for line in reader.lines() {
+        // Unwraps and splits the str into the file and the key strings,
         // then maps each str into a completely new String vector to avoid complications
         // with the lifetime of 'line'.
-        let source_couple: Vec<String> = line.split(":").map(|s| s.to_owned()).collect();
+        let source_couple: Vec<String> = line.unwrap().split(":")
+            .map(str::to_string).collect();
         // Pushes the new vector out into 'source_list'.
         source_list.push(source_couple);
     }
 
-    // Simple test case for now to prove that 'source_list' works as intended.
-    for i in source_list {
-        println!("I'm printing this from the source_list: {:?}", i);
+    return source_list;
+}
+
+// Termion code here sourced and modified from Ticki at:
+// https://ticki.github.io/blog/making-terminal-applications-in-rust-with-termion/
+fn process_input(audio_sources: &Vec<Vec<String>>) {
+    // Get the standard input stream.
+    let stdin = stdin();
+    // Get the standard output stream and go to raw mode.
+    let mut stdout = stdout().into_raw_mode().unwrap();
+
+    write!(stdout, "{}{}Press q to exit. Other letter keys will activated configured sound.{}",
+           // Clear the screen.
+           termion::clear::All,
+           // Goto (1,1).
+           termion::cursor::Goto(1, 1),
+           // Hide the cursor.
+           termion::cursor::Hide).unwrap();
+    // Flush stdout (i.e. make the output appear).
+    stdout.flush().unwrap();
+
+    for c in stdin.keys() {
+        // Clear the current line.
+        write!(stdout, "{}{}", termion::cursor::Goto(1, 2), termion::clear::CurrentLine).unwrap();
+
+        // Print the key we type...
+        match c.unwrap() {
+            // Exit.
+            Key::Char('q') => break,
+            Key::Char(c)   => isolate_audio_file(&audio_sources, c),
+            _              => println!("Unsupported key press."),
+        }
+
+        // Flush again.
+        stdout.flush().unwrap();
+    }
+
+    // Make the cursor visible again.
+    write!(stdout, "{}", termion::cursor::Show).unwrap();
+}
+
+fn isolate_audio_file(audio_sources: &Vec<Vec<String>>, letter: char) {
+    for source in audio_sources {
+        if source[1] == String::from(letter) {
+            play_audio(&source[0]);
+        }
     }
 }
 
-//===========================================================================//
+fn play_audio(audio:&String) {
+    // Get a output stream handle to the default physical sound device
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    // Load a sound from a file, using a path relative to Cargo.toml
+    let file = BufReader::new(fs::File::open(audio).unwrap());
+    // Decode that sound file into a source
+    let source = Decoder::new(file).unwrap();
+    // Play the sound directly on the device
+    stream_handle.play_raw(source.convert_samples())
+        .expect("Should be able to play audio file, but cannot.");
 
+    // The sound plays in a separate audio thread,
+    // so we need to keep the main thread alive while it's playing.
+    std::thread::sleep(std::time::Duration::from_secs(1));
+}
