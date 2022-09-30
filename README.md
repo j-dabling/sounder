@@ -8,6 +8,8 @@ path/to/file.wav:k
 ```
 Where the file path is followed by a colon ':' then followed by whichever key you choose to activate it, in this case, 'k'. Keep in mind that the key mappings are case sensitive. In the event of two or more files having the same key assignment, the first one listed will be the one played.
 
+(At the moment the paths in .config will be read relative to your working directory. Keep this in mind when running the software.)
+
 This project was a good chance to break into Rust, and to expirement with using audio and external crates.
 
 {Provide a link to your YouTube demonstration.  It should be a 4-5 minute demo of the software running and a walkthrough of the code.  Focus should be on sharing what you learned about the language syntax.}
