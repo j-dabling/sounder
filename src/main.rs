@@ -9,6 +9,8 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 
 
+// Checks for a valid config file, if found will create a reference table of
+// sounds and activation keys that will be listened for in the input environment.
 fn main() {
     let config_path = ".config";
     let mut audio_sources = Vec::new();
@@ -23,13 +25,10 @@ fn main() {
     process_input(&audio_sources);
 }
 
-// Checks to see if the default config file exists.
-// If no file is found, one will be created and populated by default.
+// Creates a template config file in the active directory named '.config'
 fn create_default_config() {
     let mut file = fs::File::create(".config")
         .expect("Should have been able to create file, but could not.");
-    //let config_template = fs:: File::open(Path::new("src/default_config"))
-        //.expect("Should have been able to open `default_config`.");
     file.write(b"# To add a sound effect to Sounder, add an entry in the following format:\n")
         .expect("Should have been able to write file, but could not.");
     file.write(b"# path/to/file.sound:k\n")
@@ -40,22 +39,18 @@ fn create_default_config() {
         .expect("Should have been able to write file, but could not.");
 }
 
-// Sets environment variables according to the options found in config file.
+// Reads the given config file-path for media file-paths and activation keys.
+// Returns a table of media file-paths with associated activation key.
 fn parse_config(file_path:&str) -> Vec<Vec<String>>{
     let file = fs::File::open(file_path).expect("file not found!");
     let reader = BufReader::new(file);
 
-    // Creates a list to keep track of all media files and their hot-keys.
     let mut source_list = Vec::new();
     for line in reader.lines() {
-        // Unwraps and splits the str into the file and the key strings,
-        // then maps each str into a completely new String vector to avoid complications
-        // with the lifetime of 'line'.
         let raw_line = line.unwrap().clone();
         if raw_line.clone().chars().nth(0).unwrap() != '#' {
             let source_couple: Vec<String> = raw_line.split(":")
                 .map(str::to_string).collect();
-            // Pushes the new vector out into 'source_list'.
             source_list.push(source_couple);
         }
     }
@@ -65,9 +60,7 @@ fn parse_config(file_path:&str) -> Vec<Vec<String>>{
 // Termion code here sourced and modified from Ticki at:
 // https://ticki.github.io/blog/making-terminal-applications-in-rust-with-termion/
 fn process_input(audio_sources: &Vec<Vec<String>>) {
-    // Get the standard input stream.
     let stdin = stdin();
-    // Get the standard output stream and go to raw mode.
     let mut stdout = stdout().into_raw_mode().unwrap();
 
     write!(stdout, "{}{}Press q to exit. Other letter keys will activate configured sound.{}",
@@ -77,29 +70,25 @@ fn process_input(audio_sources: &Vec<Vec<String>>) {
            termion::cursor::Goto(1, 1),
            // Hide the cursor.
            termion::cursor::Hide).unwrap();
-    // Flush stdout (i.e. make the output appear).
     stdout.flush().unwrap();
 
     for c in stdin.keys() {
-        // Clear the current line.
         write!(stdout, "{}{}", termion::cursor::Goto(1, 2), termion::clear::CurrentLine).unwrap();
-
-        // Print the key we type...
         match c.unwrap() {
-            // Exit.
             Key::Char('q') => break,
             Key::Char(c)   => isolate_audio_file(&audio_sources, c),
             _              => println!("Unsupported key press."),
         }
-
-        // Flush again.
         stdout.flush().unwrap();
     }
 
-    // Make the cursor visible again.
     write!(stdout, "{}", termion::cursor::Show).unwrap();
 }
 
+// Checks the given reference table 'audio_sources' for the file-path
+// that corresponds to the given key or 'letter'.
+// The matching audio file will then be played via play_audio(), or exit
+// if no matching file is found.
 fn isolate_audio_file(audio_sources: &Vec<Vec<String>>, letter: char) {
     for source in audio_sources {
         if source[1] == String::from(letter) {
@@ -108,18 +97,14 @@ fn isolate_audio_file(audio_sources: &Vec<Vec<String>>, letter: char) {
     }
 }
 
+// Given a file-path to an audio file, will play the sound to the system output
+// for three seconds.
 fn play_audio(audio:&String) {
-    // Get a output stream handle to the default physical sound device
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-    // Load a sound from a file, using a path relative to Cargo.toml
     let file = BufReader::new(fs::File::open(audio).unwrap());
-    // Decode that sound file into a source
     let source = Decoder::new(file).unwrap();
-    // Play the sound directly on the device
     stream_handle.play_raw(source.convert_samples())
         .expect("Should be able to play audio file, but cannot.");
 
-    // The sound plays in a separate audio thread,
-    // so we need to keep the main thread alive while it's playing.
     std::thread::sleep(std::time::Duration::from_secs(3));
 }
