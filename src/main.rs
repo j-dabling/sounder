@@ -28,7 +28,16 @@ fn main() {
 fn create_default_config() {
     let mut file = fs::File::create(".config")
         .expect("Should have been able to create file, but could not.");
-    file.write(b"").expect("Should have been able to write file, but could not.");
+    //let config_template = fs:: File::open(Path::new("src/default_config"))
+        //.expect("Should have been able to open `default_config`.");
+    file.write(b"# To add a sound effect to Sounder, add an entry in the following format:\n")
+        .expect("Should have been able to write file, but could not.");
+    file.write(b"# path/to/file.sound:k\n")
+        .expect("Should have been able to write file, but could not.");
+    file.write(b"# Where the filepath is followed by a colon, followed by the key you want to\n")
+        .expect("Should have been able to write file, but could not.");
+    file.write(b"# activate the sound.\n")
+        .expect("Should have been able to write file, but could not.");
 }
 
 // Sets environment variables according to the options found in config file.
@@ -42,12 +51,14 @@ fn parse_config(file_path:&str) -> Vec<Vec<String>>{
         // Unwraps and splits the str into the file and the key strings,
         // then maps each str into a completely new String vector to avoid complications
         // with the lifetime of 'line'.
-        let source_couple: Vec<String> = line.unwrap().split(":")
-            .map(str::to_string).collect();
-        // Pushes the new vector out into 'source_list'.
-        source_list.push(source_couple);
+        let raw_line = line.unwrap().clone();
+        if raw_line.clone().chars().nth(0).unwrap() != '#' {
+            let source_couple: Vec<String> = raw_line.split(":")
+                .map(str::to_string).collect();
+            // Pushes the new vector out into 'source_list'.
+            source_list.push(source_couple);
+        }
     }
-
     return source_list;
 }
 
@@ -59,7 +70,7 @@ fn process_input(audio_sources: &Vec<Vec<String>>) {
     // Get the standard output stream and go to raw mode.
     let mut stdout = stdout().into_raw_mode().unwrap();
 
-    write!(stdout, "{}{}Press q to exit. Other letter keys will activated configured sound.{}",
+    write!(stdout, "{}{}Press q to exit. Other letter keys will activate configured sound.{}",
            // Clear the screen.
            termion::clear::All,
            // Goto (1,1).
@@ -110,5 +121,5 @@ fn play_audio(audio:&String) {
 
     // The sound plays in a separate audio thread,
     // so we need to keep the main thread alive while it's playing.
-    std::thread::sleep(std::time::Duration::from_secs(1));
+    std::thread::sleep(std::time::Duration::from_secs(3));
 }
